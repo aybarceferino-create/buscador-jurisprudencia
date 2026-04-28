@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Buscador Jurisprudencia Mendoza</title>
+  <style>
+    :root{--bg:#f6f7fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--b:#d1d5db;--a:#1d4ed8;--ok:#047857}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
+    .wrap{max-width:900px;margin:0 auto;padding:24px}
+    .card{background:var(--card);border:1px solid var(--b);border-radius:16px;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.04)}
+    h1{margin:0 0 8px;font-size:28px}
+    p{line-height:1.5}
+    .row{display:grid;grid-template-columns:1fr;gap:12px;margin:16px 0}
+    textarea,input,select{width:100%;box-sizing:border-box;padding:14px;border:1px solid var(--b);border-radius:12px;font:inherit;background:#fff}
+    textarea{min-height:92px;resize:vertical}
+    .btns{display:flex;flex-wrap:wrap;gap:10px}
+    button,a.btn{border:0;border-radius:12px;padding:12px 16px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+    .primary{background:var(--a);color:#fff}
+    .secondary{background:#e5e7eb;color:#111827}
+    .ghost{background:#eef2ff;color:#1e3a8a}
+    .hint{color:var(--muted);font-size:14px}
+    .results{margin-top:18px;display:grid;gap:12px}
+    .item{border:1px solid var(--b);border-radius:14px;padding:16px;background:#fff}
+    .meta{font-size:13px;color:var(--muted);margin-top:6px}
+    .status{padding:12px 14px;border-radius:12px;background:#ecfdf5;color:var(--ok);border:1px solid #a7f3d0}
+    .warn{padding:12px 14px;border-radius:12px;background:#fffbeb;color:#92400e;border:1px solid #fcd34d}
+    .small{font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Buscador de jurisprudencia Mendoza</h1>
+      <p>Buscá rápido en los portales oficiales del Poder Judicial de Mendoza y del Tribunal de Cuentas. El sistema no inventa resúmenes: si no puede verificar el texto, te lo dice.</p>
+
+      <div class="row">
+        <textarea id="q" placeholder="Escribí la consulta: tema, número de fallo, carátula, palabra clave o frase"></textarea>
+        <select id="source">
+          <option value="ambos">Buscar en ambos sitios</option>
+          <option value="jus">Solo Poder Judicial Mendoza</option>
+          <option value="tc">Solo Tribunal de Cuentas</option>
+        </select>
+      </div>
+
+      <div class="btns">
+        <button class="primary" onclick="search()">Buscar</button>
+        <button class="secondary" onclick="clearAll()">Limpiar</button>
+        <a class="btn ghost" href="https://jusmendoza.gob.ar/biblioteca-judicial/jurisprudencia/" target="_blank" rel="noopener">Abrir Jurisprudencia</a>
+        <a class="btn ghost" href="https://www.tribunaldecuentas.mendoza.gov.ar/busqueda-de-fallos" target="_blank" rel="noopener">Abrir Fallos</a>
+      </div>
+
+      <div id="msg" style="margin-top:16px"></div>
+      <div id="results" class="results"></div>
+
+      <p class="hint small">Aviso: esta versión inicial abre y organiza las fuentes oficiales. Para resúmenes automáticos verificables hay que conectar el contenido real del fallo.</p>
+    </div>
+  </div>
+
+  <script>
+    const qs = s => document.querySelector(s);
+    const results = qs('#results');
+    const msg = qs('#msg');
+
+    function clearAll(){
+      qs('#q').value = '';
+      qs('#source').value = 'ambos';
+      results.innerHTML = '';
+      msg.innerHTML = '';
+    }
+
+    function slugify(t){ return (t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+
+    function buildLinks(query, source){
+      const q = encodeURIComponent(query.trim());
+      const links = [];
+      if(source === 'ambos' || source === 'jus'){
+        links.push({
+          title:'Poder Judicial Mendoza - Jurisprudencia',
+          url:`https://jusmendoza.gob.ar/biblioteca-judicial/jurisprudencia/`
+        });
+      }
+      if(source === 'ambos' || source === 'tc'){
+        links.push({
+          title:'Tribunal de Cuentas - Búsqueda de Fallos',
+          url:`https://www.tribunaldecuentas.mendoza.gov.ar/busqueda-de-fallos`
+        });
+      }
+      return links;
+    }
+
+    function search(){
+      const q = qs('#q').value.trim();
+      const source = qs('#source').value;
+      results.innerHTML = '';
+      msg.innerHTML = '';
+      if(!q){
+        msg.innerHTML = '<div class="warn">Escribí una consulta para buscar.</div>';
+        return;
+      }
+
+      const links = buildLinks(q, source);
+      msg.innerHTML = '<div class="status">Consulta lista. Abrí el sitio oficial y pegá la búsqueda si necesitás revisar el texto exacto.</div>';
+
+      const items = links.map(l => `
+        <div class="item">
+          <strong>${l.title}</strong>
+          <div class="meta">Fuente oficial</div>
+          <p style="margin:10px 0 0">Consulta: <em>${escapeHtml(q)}</em></p>
+          <div class="btns" style="margin-top:12px">
+            <a class="btn primary" href="${l.url}" target="_blank" rel="noopener">Abrir</a>
+          </div>
+        </div>
+      `).join('');
+
+      const resumen = `
+        <div class="item">
+          <strong>Resumen seguro</strong>
+          <p style="margin:10px 0 0">No se generó un resumen automático porque todavía no se verificó el texto completo del fallo. Esto evita errores o inventos.</p>
+        </div>
+      `;
+
+      results.innerHTML = items + resumen;
+    }
+
+    function escapeHtml(s){
+      return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+  </script>
+</body>
+</html>
